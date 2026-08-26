@@ -1,0 +1,8 @@
+target/
+*.log
+.idea/
+.vscode/
+.DS_Store
+*.iml
+solved-timetable.xlsx
+~$*.xlsx
