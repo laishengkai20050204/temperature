@@ -42,9 +42,12 @@ public final class SchoolBaselineTsvIO {
             DayOfWeek day = parseDay(parts[3]);
             int period = Integer.parseInt(parts[4]);
             String slotId = slotId(day, period);
-            Timeslot slot = byId.get(slotId);
+            // Keep the approved slot as originalTimeslotId for the large minimal-change penalty,
+            // but leave the planning variable uninitialized. This lets Timefold's construction
+            // heuristic build a hard-feasible timetable first instead of getting trapped while
+            // trying to repair a now-infeasible old timetable one move at a time.
             lessons.add(new Lesson(group + "-" + day.getValue() + "-" + period,
-                    subject, teacher, group, slotId, false, slot));
+                    subject, teacher, group, slotId, false, null));
         }
 
         return new Timetable(timeslots, buildTeacherUnavailable(lessons, byId), lessons);
