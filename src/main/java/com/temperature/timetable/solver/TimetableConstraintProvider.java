@@ -1,7 +1,6 @@
 package com.temperature.timetable.solver;
 
 import java.time.DayOfWeek;
-import java.util.Set;
 
 import ai.timefold.solver.core.api.score.HardSoftScore;
 import ai.timefold.solver.core.api.score.stream.Constraint;
@@ -74,10 +73,6 @@ public class TimetableConstraintProvider implements ConstraintProvider {
     }
 
     Constraint secondarySubjectAfterMainSubjects(ConstraintFactory factory) {
-        // School scheduling convention: Chinese and mathematics are the main subjects.
-        // On the same day, a secondary subject may not appear before a later Chinese/math lesson.
-        // English keeps its specialist-teacher availability window and is therefore not part of
-        // this ordering rule.
         return factory.forEachUniquePair(Lesson.class,
                         Joiners.equal(Lesson::getStudentGroup),
                         Joiners.equal(lesson -> lesson.getTimeslot().getDayOfWeek()))
@@ -87,11 +82,6 @@ public class TimetableConstraintProvider implements ConstraintProvider {
     }
 
     Constraint teacherNoThreeConsecutive(ConstraintFactory factory) {
-        // Three consecutive periods means the complete morning block (1-2-3)
-        // or the complete afternoon block (4-5-6). The lunch break separates the blocks.
-        // 二1 PE mirror entries do not consume the PE teacher's resource.
-        // 黄爱珠 must teach three English classes on Tue/Thu afternoons because those are
-        // her explicit availability windows; this is the only deliberate 3-period exception.
         return factory.forEach(Lesson.class)
                 .filter(lesson -> !isDisplayOnlyCombinedPe(lesson))
                 .join(factory.forEach(Lesson.class)
@@ -160,11 +150,13 @@ public class TimetableConstraintProvider implements ConstraintProvider {
     }
 
     private static boolean formsThreePeriodBlock(Lesson a, Lesson b, Lesson c) {
-        Set<Integer> periods = Set.of(
-                a.getTimeslot().getPeriod(),
-                b.getTimeslot().getPeriod(),
-                c.getTimeslot().getPeriod());
-        return periods.equals(Set.of(1, 2, 3)) || periods.equals(Set.of(4, 5, 6));
+        int p1 = a.getTimeslot().getPeriod();
+        int p2 = b.getTimeslot().getPeriod();
+        int p3 = c.getTimeslot().getPeriod();
+        if (p1 == p2 || p1 == p3 || p2 == p3) return false;
+        int min = Math.min(p1, Math.min(p2, p3));
+        int max = Math.max(p1, Math.max(p2, p3));
+        return (min == 1 && max == 3) || (min == 4 && max == 6);
     }
 
     private static boolean isAllowedThreeConsecutiveException(Lesson a, Lesson b, Lesson c) {
