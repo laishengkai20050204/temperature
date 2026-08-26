@@ -31,8 +31,17 @@ class TemperatureTimetableApplicationTest {
 
         Timetable solution = TemperatureTimetableApplication.solve(problem, Duration.ofSeconds(1));
 
+        Lesson solvedPinned = solution.getLessons().stream()
+                .filter(lesson -> lesson.getId().equals("L1"))
+                .findFirst()
+                .orElseThrow();
+        Lesson solvedMovable = solution.getLessons().stream()
+                .filter(lesson -> lesson.getId().equals("L2"))
+                .findFirst()
+                .orElseThrow();
+
         assertNotNull(solution.getScore());
-        assertEquals("MON-1", pinned.getTimeslot().getId(), "Pinned lesson must stay in place");
-        assertNotEquals("MON-1", movable.getTimeslot().getId(), "Conflicting lesson must move");
+        assertEquals("MON-1", solvedPinned.getTimeslot().getId(), "Pinned lesson must stay in place");
+        assertNotEquals("MON-1", solvedMovable.getTimeslot().getId(), "Conflicting lesson must move");
     }
 }
