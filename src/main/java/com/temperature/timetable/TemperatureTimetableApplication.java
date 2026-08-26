@@ -1,12 +1,17 @@
 package com.temperature.timetable;
 
 import java.nio.file.Path;
+import java.time.DayOfWeek;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 import ai.timefold.solver.core.api.solver.Solver;
 import ai.timefold.solver.core.api.solver.SolverFactory;
 import ai.timefold.solver.core.config.solver.SolverConfig;
 import com.temperature.timetable.domain.Lesson;
+import com.temperature.timetable.domain.TeacherUnavailable;
 import com.temperature.timetable.domain.Timetable;
 import com.temperature.timetable.io.SchoolBaselineTsvIO;
 import com.temperature.timetable.io.TimetableExcelIO;
@@ -41,6 +46,7 @@ public final class TemperatureTimetableApplication {
         long changed = solution.getLessons().stream().filter(Lesson::isChangedFromOriginal).count();
         System.out.println("Solved score: " + solution.getScore());
         System.out.println("Changed lessons: " + changed);
+        printHardViolationDiagnostics(solution);
         System.out.println("Output: " + output.toAbsolutePath());
     }
 
@@ -52,5 +58,146 @@ public final class TemperatureTimetableApplication {
                 .withTerminationSpentLimit(limit));
         Solver<Timetable> solver = solverFactory.buildSolver();
         return solver.solve(problem);
+    }
+
+    private static void printHardViolationDiagnostics(Timetable timetable) {
+        List<String> violations = new ArrayList<>();
+        List<Lesson> lessons = timetable.getLessons();
+
+        for (int i = 0; i < lessons.size(); i++) {
+            Lesson a = lessons.get(i);
+            if (a.getTimeslot() == null) continue;
+            for (int j = i + 1; j < lessons.size(); j++) {
+                Lesson b = lessons.get(j);
+                if (b.getTimeslot() == null) continue;
+                if (a.getTimeslot().equals(b.getTimeslot())) {
+                    if (a.getTeacher().equals(b.getTeacher()) && !isAllowedCombinedPe(a, b)) {
+                        violations.add("Teacher conflict: " + slot(a) + " " + a.getTeacher()
+                                + " -> " + label(a) + " | " + label(b));
+                    }
+                    if (a.getStudentGroup().equals(b.getStudentGroup())) {
+                        violations.add("Class conflict: " + slot(a) + " " + a.getStudentGroup()
+                                + " -> " + a.getSubject() + " | " + b.getSubject());
+                    }
+                }
+                if (a.getStudentGroup().equals(b.getStudentGroup())
+                        && a.getTimeslot().getDayOfWeek() == b.getTimeslot().getDayOfWeek()) {
+                    if (isSecondaryBeforeMain(a, b)) {
+                        violations.add("Secondary before main: " + label(a) + " " + slot(a)
+                                + " before " + b.getSubject() + " " + slot(b));
+                    }
+                    if (isSecondaryBeforeMain(b, a)) {
+                        violations.add("Secondary before main: " + label(b) + " " + slot(b)
+                                + " before " + a.getSubject() + " " + slot(a));
+                    }
+                }
+            }
+
+            if (a.getStudentGroup().equals("二1")
+                    && a.getTimeslot().getDayOfWeek() != DayOfWeek.MONDAY
+                    && a.getTimeslot().getPeriod() == 6) {
+                violations.add("Grade 2 late class: " + label(a) + " " + slot(a));
+            }
+            if (a.getTimeslot().getPeriod() == 1 && isSecondarySubject(a.getSubject())) {
+                violations.add("Secondary period 1: " + label(a) + " " + slot(a));
+            }
+            for (TeacherUnavailable unavailable : timetable.getTeacherUnavailableList()) {
+                if (a.getTeacher().equals(unavailable.teacher())
+                        && a.getTimeslot().equals(unavailable.timeslot())) {
+                    violations.add("Teacher unavailable: " + label(a) + " " + slot(a));
+                }
+            }
+        }
+
+        List<String> teacherDays = lessons.stream()
+                .filter(l -> l.getTimeslot() != null && !isDisplayOnlyCombinedPe(l))
+                .map(l -> l.getTeacher() + "|" + l.getTimeslot().getDayOfWeek())
+                .distinct()
+                .toList();
+        for (String key : teacherDays) {
+            String[] parts = key.split("\\|", -1);
+            String teacher = parts[0];
+            DayOfWeek day = DayOfWeek.valueOf(parts[1]);
+            List<Lesson> dayLessons = lessons.stream()
+                    .filter(l -> l.getTimeslot() != null
+                            && !isDisplayOnlyCombinedPe(l)
+                            && l.getTeacher().equals(teacher)
+                            && l.getTimeslot().getDayOfWeek() == day)
+                    .sorted(Comparator.comparingInt(l -> l.getTimeslot().getPeriod()))
+                    .toList();
+            for (int start : new int[] {1, 4}) {
+                Lesson p1 = atPeriod(dayLessons, start);
+                Lesson p2 = atPeriod(dayLessons, start + 1);
+                Lesson p3 = atPeriod(dayLessons, start + 2);
+                if (p1 != null && p2 != null && p3 != null && !isAllowedThreeConsecutiveException(p1, p2, p3)) {
+                    violations.add("Teacher three consecutive: " + teacher + " " + day
+                            + " periods " + start + "-" + (start + 2)
+                            + " -> " + label(p1) + " | " + label(p2) + " | " + label(p3));
+                }
+            }
+        }
+
+        System.out.println("Hard violation diagnostics: " + violations.size());
+        for (String violation : violations) {
+            System.out.println("VIOLATION: " + violation);
+        }
+    }
+
+    private static Lesson atPeriod(List<Lesson> lessons, int period) {
+        return lessons.stream().filter(l -> l.getTimeslot().getPeriod() == period).findFirst().orElse(null);
+    }
+
+    private static boolean isSecondaryBeforeMain(Lesson secondary, Lesson main) {
+        return isSecondarySubject(secondary.getSubject())
+                && isMainSubject(main.getSubject())
+                && secondary.getTimeslot().getPeriod() < main.getTimeslot().getPeriod();
+    }
+
+    private static boolean isMainSubject(String subject) {
+        return subject.equals("语文") || subject.equals("数学");
+    }
+
+    private static boolean isSecondarySubject(String subject) {
+        return !isMainSubject(subject);
+    }
+
+    private static boolean isAllowedThreeConsecutiveException(Lesson a, Lesson b, Lesson c) {
+        if (!a.getTeacher().equals("黄爱珠") || !b.getTeacher().equals("黄爱珠") || !c.getTeacher().equals("黄爱珠")) {
+            return false;
+        }
+        DayOfWeek day = a.getTimeslot().getDayOfWeek();
+        return (day == DayOfWeek.TUESDAY || day == DayOfWeek.THURSDAY)
+                && a.getSubject().equals("英语") && b.getSubject().equals("英语") && c.getSubject().equals("英语");
+    }
+
+    private static boolean isDisplayOnlyCombinedPe(Lesson lesson) {
+        if (!lesson.getTeacher().equals("柯冬梅") || !lesson.getStudentGroup().equals("二1")
+                || !lesson.getSubject().contains("体育")) return false;
+        DayOfWeek day = lesson.getTimeslot().getDayOfWeek();
+        int period = lesson.getTimeslot().getPeriod();
+        return (day == DayOfWeek.MONDAY && period == 2)
+                || (day == DayOfWeek.WEDNESDAY && period == 4)
+                || (day == DayOfWeek.FRIDAY && period == 3);
+    }
+
+    private static boolean isAllowedCombinedPe(Lesson a, Lesson b) {
+        if (!a.getTeacher().equals("柯冬梅") || !b.getTeacher().equals("柯冬梅")) return false;
+        if (!a.getSubject().contains("体育") || !b.getSubject().contains("体育")) return false;
+        boolean groupsMatch = (a.getStudentGroup().equals("二1") && b.getStudentGroup().equals("三1"))
+                || (a.getStudentGroup().equals("三1") && b.getStudentGroup().equals("二1"));
+        if (!groupsMatch) return false;
+        DayOfWeek day = a.getTimeslot().getDayOfWeek();
+        int period = a.getTimeslot().getPeriod();
+        return (day == DayOfWeek.MONDAY && period == 3)
+                || (day == DayOfWeek.WEDNESDAY && period == 5)
+                || (day == DayOfWeek.FRIDAY && period == 3);
+    }
+
+    private static String slot(Lesson lesson) {
+        return lesson.getTimeslot().getDayOfWeek() + "-" + lesson.getTimeslot().getPeriod();
+    }
+
+    private static String label(Lesson lesson) {
+        return lesson.getStudentGroup() + " " + lesson.getSubject() + "(" + lesson.getTeacher() + ")";
     }
 }
