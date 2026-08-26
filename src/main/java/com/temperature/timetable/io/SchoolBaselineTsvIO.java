@@ -42,15 +42,18 @@ public final class SchoolBaselineTsvIO {
             DayOfWeek day = parseDay(parts[3]);
             int period = Integer.parseInt(parts[4]);
             String slotId = slotId(day, period);
-            // Keep the approved slot as originalTimeslotId for the large minimal-change penalty,
-            // but leave the planning variable uninitialized. This lets Timefold's construction
-            // heuristic build a hard-feasible timetable first instead of getting trapped while
-            // trying to repair a now-infeasible old timetable one move at a time.
+            Timeslot slot = byId.get(slotId);
+            boolean locked = isDisplayOnlyCombinedPe(group, subject, teacher, slotId);
             lessons.add(new Lesson(group + "-" + day.getValue() + "-" + period,
-                    subject, teacher, group, slotId, false, null));
+                    subject, teacher, group, slotId, locked, slot));
         }
 
         return new Timetable(timeslots, buildTeacherUnavailable(lessons, byId), lessons);
+    }
+
+    private static boolean isDisplayOnlyCombinedPe(String group, String subject, String teacher, String slotId) {
+        return group.equals("二1") && teacher.equals("柯冬梅") && subject.contains("体育")
+                && (slotId.equals("MON-2") || slotId.equals("WED-4") || slotId.equals("FRI-3"));
     }
 
     private static List<TeacherUnavailable> buildTeacherUnavailable(List<Lesson> lessons,
