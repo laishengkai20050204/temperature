@@ -19,7 +19,7 @@ jobs:
       - name: Test and package
         run: mvn -B clean test package
 
-      - name: Verify teacher workload baseline
+      - name: Verify teacher workload and ordering baseline
         shell: bash
         run: |
           while IFS=$'\t' read -r teacher target; do
@@ -28,7 +28,42 @@ jobs:
             echo "$teacher target=$target actual=$actual"
             test "$actual" -eq "$target"
           done < data/teacher-targets.tsv
+
           awk -F'\t' 'NR>1 && $5==1 && $2!="语文" && $2!="数学" {print "Secondary subject in period 1:", $0; bad=1} END {exit bad}' data/school-baseline.tsv
+
+          python - <<'PY'
+          import csv
+          from collections import defaultdict
+
+          main = {"语文", "数学"}
+          rows = []
+          with open("data/school-baseline.tsv", encoding="utf-8", newline="") as f:
+              for r in csv.DictReader(f, delimiter="\t"):
+                  r["period"] = int(r["period"])
+                  rows.append(r)
+
+          def verify_order(key_field, label):
+              grouped = defaultdict(list)
+              for r in rows:
+                  grouped[(r[key_field], r["day"])].append(r)
+              bad = []
+              for (name, day), items in grouped.items():
+                  mains = [r for r in items if r["subject"] in main]
+                  secondary = [r for r in items if r["subject"] not in main]
+                  for s in secondary:
+                      later = [m for m in mains if m["period"] > s["period"]]
+                      if later:
+                          m = min(later, key=lambda x: x["period"])
+                          bad.append((name, day, s, m))
+              for name, day, s, m in bad:
+                  print(f"{label} secondary-before-main: {name} {day}: "
+                        f"{s['period']} {s['subject']} before {m['period']} {m['subject']}")
+              if bad:
+                  raise SystemExit(1)
+
+          verify_order("class", "Class")
+          verify_order("teacher", "Teacher")
+          PY
 
       - name: Solve latest school timetable
         run: |
