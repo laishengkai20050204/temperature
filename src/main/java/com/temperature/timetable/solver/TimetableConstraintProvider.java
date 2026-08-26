@@ -19,6 +19,7 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                 studentGroupConflict(factory),
                 teacherUnavailable(factory),
                 gradeTwoNoLateClass(factory),
+                secondarySubjectNotFirstPeriod(factory),
                 minimizeChanges(factory),
                 teacherConsecutiveLoad(factory),
                 spreadSameSubject(factory),
@@ -61,6 +62,14 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                 .asConstraint("Grade 2 no period 6 Tue-Fri");
     }
 
+    Constraint secondarySubjectNotFirstPeriod(ConstraintFactory factory) {
+        return factory.forEach(Lesson.class)
+                .filter(lesson -> lesson.getTimeslot().getPeriod() == 1
+                        && isSecondarySubject(lesson.getSubject()))
+                .penalize(HardSoftScore.ONE_HARD)
+                .asConstraint("Secondary subjects cannot be period 1");
+    }
+
     Constraint minimizeChanges(ConstraintFactory factory) {
         // The uploaded workbook is the approved baseline. Moving a lesson is therefore
         // much more expensive than any ordinary preference improvement. The solver only
@@ -95,6 +104,12 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                         && lesson.getTimeslot().getPeriod() > 2)
                 .penalize(HardSoftScore.ONE_SOFT)
                 .asConstraint("Chinese and math prefer morning periods 1-2");
+    }
+
+    private static boolean isSecondarySubject(String subject) {
+        return !subject.equals("语文")
+                && !subject.equals("数学")
+                && !subject.equals("英语");
     }
 
     private static boolean isAllowedCombinedPe(Lesson a, Lesson b) {
