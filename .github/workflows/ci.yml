@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  test:
+  test-and-solve:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -15,5 +15,26 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
+
       - name: Test and package
         run: mvn -B clean test package
+
+      - name: Solve approved school timetable
+        run: |
+          java -jar target/temperature-timetable-0.1.0-SNAPSHOT.jar \
+            data/school-baseline.tsv \
+            target/school-timetable-solved.xlsx | tee target/solve.log
+
+      - name: Verify no hard conflicts and no unnecessary moves
+        run: |
+          grep -q "Solved score: 0hard/" target/solve.log
+          grep -q "Changed lessons: 0" target/solve.log
+
+      - name: Upload solved timetable
+        uses: actions/upload-artifact@v4
+        with:
+          name: school-timetable-solved
+          path: |
+            target/school-timetable-solved.xlsx
+            target/solve.log
+          if-no-files-found: error
