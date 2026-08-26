@@ -28,7 +28,7 @@ jobs:
             echo "$teacher target=$target actual=$actual"
             test "$actual" -eq "$target"
           done < data/teacher-targets.tsv
-          awk -F'\t' 'NR>1 && $5==1 && $2!="语文" && $2!="数学" && $2!="英语" {print "Secondary subject in period 1:", $0; bad=1} END {exit bad}' data/school-baseline.tsv
+          awk -F'\t' 'NR>1 && $5==1 && $2!="语文" && $2!="数学" {print "Secondary subject in period 1:", $0; bad=1} END {exit bad}' data/school-baseline.tsv
 
       - name: Solve latest school timetable
         run: |
@@ -41,6 +41,7 @@ jobs:
           grep -q "Solved score: 0hard/" target/solve.log
 
       - name: Upload solved timetable
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: school-timetable-solved
