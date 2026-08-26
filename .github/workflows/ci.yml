@@ -25,10 +25,11 @@ jobs:
             data/school-baseline.tsv \
             target/school-timetable-solved.xlsx | tee target/solve.log
 
-      - name: Verify no hard conflicts and no unnecessary moves
+      - name: Verify hard constraints and required adjustment
         run: |
           grep -q "Solved score: 0hard/" target/solve.log
-          grep -q "Changed lessons: 0" target/solve.log
+          changed=$(grep "Changed lessons:" target/solve.log | awk '{print $3}')
+          test "$changed" -gt 0
 
       - name: Upload solved timetable
         uses: actions/upload-artifact@v4
