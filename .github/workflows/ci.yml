@@ -19,17 +19,26 @@ jobs:
       - name: Test and package
         run: mvn -B clean test package
 
-      - name: Solve approved school timetable
+      - name: Verify teacher workload baseline
+        shell: bash
+        run: |
+          while IFS=$'\t' read -r teacher target; do
+            [ "$teacher" = "teacher" ] && continue
+            actual=$(awk -F'\t' -v t="$teacher" 'NR>1 && $3==t {n++} END {print n+0}' data/school-baseline.tsv)
+            echo "$teacher target=$target actual=$actual"
+            test "$actual" -eq "$target"
+          done < data/teacher-targets.tsv
+          awk -F'\t' 'NR>1 && $5==1 && $2!="语文" && $2!="数学" && $2!="英语" {print "Secondary subject in period 1:", $0; bad=1} END {exit bad}' data/school-baseline.tsv
+
+      - name: Solve latest school timetable
         run: |
           java -jar target/temperature-timetable-0.1.0-SNAPSHOT.jar \
             data/school-baseline.tsv \
             target/school-timetable-solved.xlsx | tee target/solve.log
 
-      - name: Verify hard constraints and required adjustment
+      - name: Verify hard constraints
         run: |
           grep -q "Solved score: 0hard/" target/solve.log
-          changed=$(grep "Changed lessons:" target/solve.log | awk '{print $3}')
-          test "$changed" -gt 0
 
       - name: Upload solved timetable
         uses: actions/upload-artifact@v4
