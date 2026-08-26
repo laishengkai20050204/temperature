@@ -33,7 +33,9 @@ public class TimetableConstraintProvider implements ConstraintProvider {
         return factory.forEachUniquePair(Lesson.class,
                         Joiners.equal(Lesson::getTimeslot),
                         Joiners.equal(Lesson::getTeacher))
-                .filter((a, b) -> !isAllowedCombinedPe(a, b))
+                .filter((a, b) -> !isDisplayOnlyCombinedPe(a)
+                        && !isDisplayOnlyCombinedPe(b)
+                        && !isAllowedCombinedPe(a, b))
                 .penalize(HardSoftScore.ONE_HARD)
                 .asConstraint("Teacher conflict");
     }
@@ -51,6 +53,7 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                 .join(TeacherUnavailable.class,
                         Joiners.equal(Lesson::getTeacher, TeacherUnavailable::teacher),
                         Joiners.equal(Lesson::getTimeslot, TeacherUnavailable::timeslot))
+                .filter((lesson, unavailable) -> !isDisplayOnlyCombinedPe(lesson))
                 .penalize(HardSoftScore.ONE_HARD)
                 .asConstraint("Teacher unavailable");
     }
@@ -179,11 +182,10 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                 || !lesson.getSubject().contains("体育")) {
             return false;
         }
-        DayOfWeek day = lesson.getTimeslot().getDayOfWeek();
-        int period = lesson.getTimeslot().getPeriod();
-        return (day == DayOfWeek.MONDAY && period == 2)
-                || (day == DayOfWeek.WEDNESDAY && period == 4)
-                || (day == DayOfWeek.FRIDAY && period == 3);
+        String original = lesson.getOriginalTimeslotId();
+        return original != null && (original.equals("MON-2")
+                || original.equals("WED-4")
+                || original.equals("FRI-3"));
     }
 
     private static boolean isAllowedCombinedPe(Lesson a, Lesson b) {
