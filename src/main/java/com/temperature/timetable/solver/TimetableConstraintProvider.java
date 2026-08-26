@@ -1,5 +1,7 @@
 package com.temperature.timetable.solver;
 
+import java.time.DayOfWeek;
+
 import ai.timefold.solver.core.api.score.HardSoftScore;
 import ai.timefold.solver.core.api.score.stream.Constraint;
 import ai.timefold.solver.core.api.score.stream.ConstraintFactory;
@@ -16,9 +18,11 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                 teacherConflict(factory),
                 studentGroupConflict(factory),
                 teacherUnavailable(factory),
+                gradeTwoNoLateClass(factory),
                 minimizeChanges(factory),
                 teacherConsecutiveLoad(factory),
-                spreadSameSubject(factory)
+                spreadSameSubject(factory),
+                coreSubjectMorningPreference(factory)
         };
     }
 
@@ -26,6 +30,7 @@ public class TimetableConstraintProvider implements ConstraintProvider {
         return factory.forEachUniquePair(Lesson.class,
                         Joiners.equal(Lesson::getTimeslot),
                         Joiners.equal(Lesson::getTeacher))
+                .filter((a, b) -> !isAllowedCombinedPe(a, b))
                 .penalize(HardSoftScore.ONE_HARD)
                 .asConstraint("Teacher conflict");
     }
@@ -47,11 +52,23 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                 .asConstraint("Teacher unavailable");
     }
 
+    Constraint gradeTwoNoLateClass(ConstraintFactory factory) {
+        return factory.forEach(Lesson.class)
+                .filter(lesson -> lesson.getStudentGroup().equals("二1")
+                        && lesson.getTimeslot().getDayOfWeek() != DayOfWeek.MONDAY
+                        && lesson.getTimeslot().getPeriod() == 6)
+                .penalize(HardSoftScore.ONE_HARD)
+                .asConstraint("Grade 2 no period 6 Tue-Fri");
+    }
+
     Constraint minimizeChanges(ConstraintFactory factory) {
+        // The uploaded workbook is the approved baseline. Moving a lesson is therefore
+        // much more expensive than any ordinary preference improvement. The solver only
+        // changes the baseline when required to remove a hard violation.
         return factory.forEach(Lesson.class)
                 .filter(Lesson::isChangedFromOriginal)
-                .penalize(HardSoftScore.ofSoft(20))
-                .asConstraint("Minimize changes from original timetable");
+                .penalize(HardSoftScore.ofSoft(1000))
+                .asConstraint("Minimize changes from approved timetable");
     }
 
     Constraint teacherConsecutiveLoad(ConstraintFactory factory) {
@@ -70,5 +87,27 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                         Joiners.equal(lesson -> lesson.getTimeslot().getDayOfWeek()))
                 .penalize(HardSoftScore.ofSoft(2))
                 .asConstraint("Spread same subject across week");
+    }
+
+    Constraint coreSubjectMorningPreference(ConstraintFactory factory) {
+        return factory.forEach(Lesson.class)
+                .filter(lesson -> (lesson.getSubject().equals("语文") || lesson.getSubject().equals("数学"))
+                        && lesson.getTimeslot().getPeriod() > 2)
+                .penalize(HardSoftScore.ONE_SOFT)
+                .asConstraint("Chinese and math prefer morning periods 1-2");
+    }
+
+    private static boolean isAllowedCombinedPe(Lesson a, Lesson b) {
+        if (!a.getTeacher().equals("柯冬梅") || !b.getTeacher().equals("柯冬梅")) return false;
+        if (!a.getSubject().contains("体育") || !b.getSubject().contains("体育")) return false;
+        boolean groupsMatch = (a.getStudentGroup().equals("二1") && b.getStudentGroup().equals("三1"))
+                || (a.getStudentGroup().equals("三1") && b.getStudentGroup().equals("二1"));
+        if (!groupsMatch) return false;
+
+        DayOfWeek day = a.getTimeslot().getDayOfWeek();
+        int period = a.getTimeslot().getPeriod();
+        return (day == DayOfWeek.MONDAY && period == 3)
+                || (day == DayOfWeek.WEDNESDAY && period == 5)
+                || (day == DayOfWeek.FRIDAY && period == 3);
     }
 }
