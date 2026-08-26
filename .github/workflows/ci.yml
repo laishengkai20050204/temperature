@@ -36,9 +36,10 @@ jobs:
             data/school-baseline.tsv \
             target/school-timetable-solved.xlsx | tee target/solve.log
 
-      - name: Verify hard constraints
+      - name: Verify hard constraints and stable candidate
         run: |
           grep -q "Solved score: 0hard/" target/solve.log
+          grep -q "Changed lessons: 0" target/solve.log
 
       - name: Upload solved timetable
         if: always()
