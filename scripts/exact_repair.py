@@ -73,7 +73,11 @@ def build_unavailable(rows):
     for t in english:
         for d in DAYS:
             for p in PERIODS:
-                if not (d in {"TUE", "THU"} and p >= 4):
+                if t == "洪丽君":
+                    allowed = (d == "TUE" and p in {2, 3}) or (d == "THU" and p >= 4)
+                else:
+                    allowed = (d in {"TUE", "THU"} and p >= 4)
+                if not allowed:
                     unavailable[t].add((d, p))
 
     for d in DAYS:
@@ -219,6 +223,27 @@ def solve(rows, output_path, time_limit):
         raise SystemExit("No 五1语文(吴淑治) found")
     model.Add(sum(x[r["_idx"], ("WED", 1)] for r in wu_wed_chinese) == 1)
 
+    # 洪丽君：周二两节英语从下午移到上午第2、3节；周四两节保持原正式时段。
+    hong_tue_english = [
+        r for r in rows
+        if r["teacher"] == "洪丽君" and r["subject"] == "英语" and r["day"] == "TUE"
+    ]
+    if len(hong_tue_english) != 2:
+        raise SystemExit(f"Expected two Tuesday English lessons for 洪丽君, got {len(hong_tue_english)}")
+    for r in hong_tue_english:
+        model.Add(x[r["_idx"], ("TUE", 2)] + x[r["_idx"], ("TUE", 3)] == 1)
+    model.Add(sum(x[r["_idx"], ("TUE", 2)] for r in hong_tue_english) == 1)
+    model.Add(sum(x[r["_idx"], ("TUE", 3)] for r in hong_tue_english) == 1)
+
+    hong_thu_english = [
+        r for r in rows
+        if r["teacher"] == "洪丽君" and r["subject"] == "英语" and r["day"] == "THU"
+    ]
+    if len(hong_thu_english) != 2:
+        raise SystemExit(f"Expected two Thursday English lessons for 洪丽君, got {len(hong_thu_english)}")
+    for r in hong_thu_english:
+        model.Add(x[r["_idx"], ("THU", r["period"])] == 1)
+
     # 同一班同一门非体育次科不能在同一天出现两节。
     same_secondary_groups = defaultdict(list)
     for r in rows:
@@ -235,7 +260,10 @@ def solve(rows, output_path, time_limit):
     # 班级层面：同一天语文/数学必须在次科之前。
     for group_rows in by_class.values():
         mains = [r for r in group_rows if is_main(r["subject"])]
-        secondary = [r for r in group_rows if is_secondary(r["subject"]) and not is_pe(r["subject"])]
+        secondary = [
+            r for r in group_rows
+            if is_secondary(r["subject"]) and r["subject"] != "英语" and not is_pe(r["subject"])
+        ]
         for sec in secondary:
             for main in mains:
                 for d in DAYS:
@@ -249,7 +277,10 @@ def solve(rows, output_path, time_limit):
     # 教师个人层面：当天自己承担的语文/数学也必须在其次科之前。
     for teacher_rows in by_teacher.values():
         mains = [r for r in teacher_rows if is_main(r["subject"])]
-        secondary = [r for r in teacher_rows if is_secondary(r["subject"]) and not is_pe(r["subject"])]
+        secondary = [
+            r for r in teacher_rows
+            if is_secondary(r["subject"]) and r["subject"] != "英语" and not is_pe(r["subject"])
+        ]
         for sec in secondary:
             for main in mains:
                 for d in DAYS:
@@ -336,7 +367,7 @@ def solve(rows, output_path, time_limit):
     # 其它次科第2节仍然尽量减少（体育除外）。
     second_secondary_terms = []
     for r in rows:
-        if is_secondary(r["subject"]) and not is_pe(r["subject"]):
+        if is_secondary(r["subject"]) and r["subject"] != "英语" and not is_pe(r["subject"]):
             for d in DAYS:
                 second_secondary_terms.append(x[r["_idx"], (d, 2)])
 
