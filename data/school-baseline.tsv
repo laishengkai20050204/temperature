@@ -33,7 +33,7 @@ class	subject	teacher	day	period
 三1	音乐	林燕慧	MON	6
 三1	数学	曾达莎	TUE	1
 三1	语文	洪俊儒	TUE	2
-三1	语文	洪俊儒	TUE	3
+三1	书法	洪俊儒	TUE	3
 三1	道德与法治	洪丽兰	TUE	4
 三1	科学	姚金钗	TUE	5
 三1	英语	洪丽君	TUE	6
@@ -50,7 +50,7 @@ class	subject	teacher	day	period
 三1	英语	洪丽君	THU	5
 三1	少先队课	姚金钗	THU	6
 三1	语文	洪俊儒	FRI	1
-三1	书法	洪俊儒	FRI	2
+三1	语文	洪俊儒	FRI	2
 三1	体育	柯冬梅	FRI	3
 三1	信息科技	曾达莎	FRI	4
 三1	劳动	江素华	FRI	5
