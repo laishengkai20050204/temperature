@@ -103,21 +103,25 @@ jobs:
           assert any(r["class"]=="五1" and r["subject"]=="语文" and r["teacher"]=="吴淑治"
                      and r["day"]=="WED" and r["period"]==1 for r in after)
 
-          # 2) 每班每天语文+数学均衡。
+          # 2) 每班每天语文+数学均衡：每天最多3节，
+          # 并要求“超过2节”的总量达到理论最低。
           weekly = Counter(r["class"] for r in after if r["subject"] in MAIN)
           daily = Counter((r["class"], r["day"]) for r in after if r["subject"] in MAIN)
+          actual_overload = 0
+          theoretical_overload = 0
           for cls, total in sorted(weekly.items()):
-              cap = math.ceil(total / 5)
               counts = [daily[(cls,d)] for d in DAYS]
-              print("core-balance", cls, counts, "cap", cap)
-              assert max(counts) <= cap, (cls, counts, cap)
-              if total == 10:
-                  assert counts == [2,2,2,2,2], (cls, counts)
+              print("core-balance", cls, counts)
+              assert max(counts) <= 3, (cls, counts)
+              actual_overload += sum(max(0, n-2) for n in counts)
+              theoretical_overload += max(0, total - 10)
+          print("core-overload actual=", actual_overload, "theoretical=", theoretical_overload)
+          assert actual_overload == theoretical_overload, (actual_overload, theoretical_overload)
 
-          # 特别复核洪雪颖任教的二1、四1：每天语数不超过2节。
+          # 特别复核洪雪颖任教的二1、四1：理论最优时每天都只能是2节语数。
           for cls in ("二1", "四1"):
               counts = [daily[(cls,d)] for d in DAYS]
-              assert max(counts) <= 2, (cls, counts)
+              assert counts == [2,2,2,2,2], (cls, counts)
 
           # 3) 体育实际课位不变；只允许二1周五“正式显示体育”换位。
           def pe_key(r):
