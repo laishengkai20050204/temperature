@@ -130,12 +130,18 @@ public final class TimetableExcelIO {
             addUnavailable(result, seen, "姚金钗", DayOfWeek.MONDAY, period, timeslotById);
         }
 
-        // 英语专任只允许周二、周四下午。
+        // 英语专任：洪丽君周二允许上午第2、3节，周四仍为下午；黄爱珠仍只允许周二、周四下午。
         for (String teacher : englishTeachers) {
             for (DayOfWeek day : List.of(DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY,
                     DayOfWeek.THURSDAY, DayOfWeek.FRIDAY)) {
                 for (int period = 1; period <= 6; period++) {
-                    boolean allowed = (day == DayOfWeek.TUESDAY || day == DayOfWeek.THURSDAY) && period >= 4;
+                    boolean allowed;
+                    if (teacher.equals("洪丽君")) {
+                        allowed = (day == DayOfWeek.TUESDAY && (period == 2 || period == 3))
+                                || (day == DayOfWeek.THURSDAY && period >= 4);
+                    } else {
+                        allowed = (day == DayOfWeek.TUESDAY || day == DayOfWeek.THURSDAY) && period >= 4;
+                    }
                     if (!allowed) addUnavailable(result, seen, teacher, day, period, timeslotById);
                 }
             }
