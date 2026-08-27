@@ -197,7 +197,7 @@ def solve(rows, output_path, time_limit):
     # 班级层面：同一天语文/数学必须在次科之前。
     for group_rows in by_class.values():
         mains = [r for r in group_rows if is_main(r["subject"])]
-        secondary = [r for r in group_rows if is_secondary(r["subject"])]
+        secondary = [r for r in group_rows if is_secondary(r["subject"]) and not is_pe(r["subject"])]
         for sec in secondary:
             for main in mains:
                 for d in DAYS:
@@ -211,7 +211,7 @@ def solve(rows, output_path, time_limit):
     # 教师个人层面：当天自己承担的语文/数学也必须在其次科之前。
     for teacher_rows in by_teacher.values():
         mains = [r for r in teacher_rows if is_main(r["subject"])]
-        secondary = [r for r in teacher_rows if is_secondary(r["subject"])]
+        secondary = [r for r in teacher_rows if is_secondary(r["subject"]) and not is_pe(r["subject"])]
         for sec in secondary:
             for main in mains:
                 for d in DAYS:
