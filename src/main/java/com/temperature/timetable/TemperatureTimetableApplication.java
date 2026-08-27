@@ -44,8 +44,19 @@ public final class TemperatureTimetableApplication {
         }
 
         long changed = solution.getLessons().stream().filter(Lesson::isChangedFromOriginal).count();
+        long movedPe = solution.getLessons().stream()
+                .filter(lesson -> lesson.getSubject().contains("体育") && lesson.isChangedFromOriginal())
+                .count();
+        long secondaryPeriod2 = solution.getLessons().stream()
+                .filter(lesson -> lesson.getTimeslot() != null
+                        && lesson.getTimeslot().getPeriod() == 2
+                        && isSecondarySubject(lesson.getSubject())
+                        && !lesson.getSubject().contains("体育"))
+                .count();
         System.out.println("Solved score: " + solution.getScore());
         System.out.println("Changed lessons: " + changed);
+        System.out.println("Moved PE lessons: " + movedPe);
+        System.out.println("Secondary period-2 preference count: " + secondaryPeriod2);
         printHardViolationDiagnostics(solution);
         System.out.println("Output: " + output.toAbsolutePath());
     }
@@ -98,11 +109,10 @@ public final class TemperatureTimetableApplication {
                     && a.getTimeslot().getPeriod() == 6) {
                 violations.add("Grade 2 late class: " + label(a) + " " + slot(a));
             }
-            if (a.getTimeslot().getPeriod() <= 2 && isSecondarySubject(a.getSubject())) {
-                violations.add("Secondary period 1-2: " + label(a) + " " + slot(a));
-            }
-            if (isDisplayOnlyCombinedPe(a) && !isExpectedCombinedPeDisplaySlot(a)) {
-                violations.add("Grade 2 combined PE display slot mismatch: " + label(a) + " " + slot(a));
+            if (a.getTimeslot().getPeriod() == 1
+                    && isSecondarySubject(a.getSubject())
+                    && !a.getSubject().contains("体育")) {
+                violations.add("Secondary period 1: " + label(a) + " " + slot(a));
             }
             for (TeacherUnavailable unavailable : timetable.getTeacherUnavailableList()) {
                 if (a.getTeacher().equals(unavailable.teacher())
