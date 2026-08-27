@@ -122,7 +122,7 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                 .filter(lesson -> lesson.getTimeslot().getPeriod() == 2
                         && isSecondarySubject(lesson.getSubject())
                         && !isPhysicalEducation(lesson.getSubject()))
-                .penalize(HardSoftScore.ofSoft(100000))
+                .penalize(HardSoftScore.ofSoft(2500))
                 .asConstraint("Avoid secondary subjects in period 2");
     }
 
