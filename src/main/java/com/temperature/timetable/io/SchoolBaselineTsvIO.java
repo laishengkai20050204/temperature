@@ -83,7 +83,13 @@ public final class SchoolBaselineTsvIO {
         for (String teacher : englishTeachers) {
             for (DayOfWeek day : workDays()) {
                 for (int period = 1; period <= 6; period++) {
-                    boolean allowed = (day == DayOfWeek.TUESDAY || day == DayOfWeek.THURSDAY) && period >= 4;
+                    boolean allowed;
+                    if (teacher.equals("洪丽君")) {
+                        allowed = (day == DayOfWeek.TUESDAY && (period == 2 || period == 3))
+                                || (day == DayOfWeek.THURSDAY && period >= 4);
+                    } else {
+                        allowed = (day == DayOfWeek.TUESDAY || day == DayOfWeek.THURSDAY) && period >= 4;
+                    }
                     if (!allowed) add(result, seen, teacher, day, period, byId);
                 }
             }
