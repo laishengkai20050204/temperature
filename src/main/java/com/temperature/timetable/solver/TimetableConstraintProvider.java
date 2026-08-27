@@ -143,7 +143,7 @@ public class TimetableConstraintProvider implements ConstraintProvider {
     Constraint secondarySubjectSecondPeriodPreference(ConstraintFactory factory) {
         return factory.forEach(Lesson.class)
                 .filter(lesson -> lesson.getTimeslot().getPeriod() == 2
-                        && isSecondarySubject(lesson.getSubject())
+                        && isSecondPeriodAvoidSubject(lesson.getSubject())
                         && !isPhysicalEducation(lesson.getSubject()))
                 .penalize(HardSoftScore.ofSoft(10))
                 .asConstraint("Avoid secondary subjects in period 2");
@@ -185,7 +185,7 @@ public class TimetableConstraintProvider implements ConstraintProvider {
     }
 
     private static boolean isSecondaryBeforeMain(Lesson maybeSecondary, Lesson maybeMain) {
-        return isSecondarySubject(maybeSecondary.getSubject())
+        return isOrderingSecondarySubject(maybeSecondary.getSubject())
                 && !isPhysicalEducation(maybeSecondary.getSubject())
                 && isMainSubject(maybeMain.getSubject())
                 && maybeSecondary.getTimeslot().getPeriod() < maybeMain.getTimeslot().getPeriod();
@@ -197,6 +197,14 @@ public class TimetableConstraintProvider implements ConstraintProvider {
 
     private static boolean isSecondarySubject(String subject) {
         return !isMainSubject(subject);
+    }
+
+    private static boolean isOrderingSecondarySubject(String subject) {
+        return isSecondarySubject(subject) && !subject.equals("英语");
+    }
+
+    private static boolean isSecondPeriodAvoidSubject(String subject) {
+        return isSecondarySubject(subject) && !subject.equals("英语");
     }
 
     private static boolean isPhysicalEducation(String subject) {
