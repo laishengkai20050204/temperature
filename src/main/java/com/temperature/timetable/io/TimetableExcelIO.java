@@ -84,8 +84,9 @@ public final class TimetableExcelIO {
                     String slotId = schoolTimeslotId(day, period);
                     Timeslot timeslot = timeslotById.get(slotId);
                     String lessonId = group + "-" + dayIndex + "-" + period;
+                    boolean locked = parsed.subject().contains("体育");
                     lessons.add(new Lesson(lessonId, parsed.subject(), parsed.teacher(), group,
-                            slotId, false, timeslot));
+                            slotId, locked, timeslot));
                 }
             }
         }
