@@ -24,6 +24,7 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                 secondarySubjectAfterTeacherMainSubjects(factory),
                 teacherNoThreeConsecutive(factory),
                 laiMingyaSecondaryNotSecondPeriod(factory),
+                secondarySubjectSameDayDuplicate(factory),
                 secondarySubjectSecondPeriodPreference(factory),
                 minimizeChanges(factory),
                 teacherConsecutiveLoad(factory),
@@ -126,6 +127,17 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                         && !isPhysicalEducation(lesson.getSubject()))
                 .penalize(HardSoftScore.ONE_HARD)
                 .asConstraint("Lai Mingya secondary subjects cannot be period 2");
+    }
+
+    Constraint secondarySubjectSameDayDuplicate(ConstraintFactory factory) {
+        return factory.forEachUniquePair(Lesson.class,
+                        Joiners.equal(Lesson::getStudentGroup),
+                        Joiners.equal(Lesson::getSubject),
+                        Joiners.equal(lesson -> lesson.getTimeslot().getDayOfWeek()))
+                .filter((a, b) -> isSecondarySubject(a.getSubject())
+                        && !isPhysicalEducation(a.getSubject()))
+                .penalize(HardSoftScore.ONE_HARD)
+                .asConstraint("Same secondary subject cannot repeat on the same day");
     }
 
     Constraint secondarySubjectSecondPeriodPreference(ConstraintFactory factory) {
