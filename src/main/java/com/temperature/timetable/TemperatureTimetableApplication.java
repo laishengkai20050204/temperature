@@ -90,7 +90,10 @@ public final class TemperatureTimetableApplication {
                 Lesson b = lessons.get(j);
                 if (b.getTimeslot() == null) continue;
                 if (a.getTimeslot().equals(b.getTimeslot())) {
-                    if (a.getTeacher().equals(b.getTeacher()) && !isAllowedCombinedPe(a, b)) {
+                    if (a.getTeacher().equals(b.getTeacher())
+                            && !isDisplayOnlyCombinedPe(a)
+                            && !isDisplayOnlyCombinedPe(b)
+                            && !isAllowedCombinedPe(a, b)) {
                         violations.add("Teacher conflict: " + slot(a) + " " + a.getTeacher()
                                 + " -> " + label(a) + " | " + label(b));
                     }
