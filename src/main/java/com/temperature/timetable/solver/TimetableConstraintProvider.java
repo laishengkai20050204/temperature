@@ -23,6 +23,7 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                 secondarySubjectAfterMainSubjects(factory),
                 secondarySubjectAfterTeacherMainSubjects(factory),
                 teacherNoThreeConsecutive(factory),
+                mainSubjectTeacherSecondaryNotSecondPeriod(factory),
                 secondarySubjectSecondPeriodPreference(factory),
                 minimizeChanges(factory),
                 teacherConsecutiveLoad(factory),
@@ -115,6 +116,18 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                         && !isAllowedThreeConsecutiveException(a, b, c))
                 .penalize(HardSoftScore.ONE_HARD)
                 .asConstraint("Teacher cannot teach three consecutive periods");
+    }
+
+    Constraint mainSubjectTeacherSecondaryNotSecondPeriod(ConstraintFactory factory) {
+        return factory.forEach(Lesson.class)
+                .filter(lesson -> lesson.getTimeslot().getPeriod() == 2
+                        && isSecondarySubject(lesson.getSubject())
+                        && !isPhysicalEducation(lesson.getSubject()))
+                .join(Lesson.class,
+                        Joiners.equal(Lesson::getTeacher))
+                .filter((secondary, main) -> isMainSubject(main.getSubject()))
+                .penalize(HardSoftScore.ONE_HARD)
+                .asConstraint("Main-subject teachers cannot teach secondary subjects in period 2");
     }
 
     Constraint secondarySubjectSecondPeriodPreference(ConstraintFactory factory) {
