@@ -119,10 +119,17 @@ jobs:
           # 原基线总超载为7；新方案至少不得变差。
           assert actual_overload <= 7, actual_overload
 
-          # 特别复核洪雪颖任教的二1、四1：每天都必须是2节语数。
+          # 特别复核洪雪颖任教的二1、四1：
+          # 前序精确检查已证明两班合计少于2个“三节日”无解，
+          # 因此最终必须各自恰好只有1天3节，其余不再出现超过3节。
+          hong_overload = 0
           for cls in ("二1", "四1"):
               counts = [daily[(cls,d)] for d in DAYS]
-              assert counts == [2,2,2,2,2], (cls, counts)
+              overload_days = sum(1 for n in counts if n == 3)
+              assert overload_days == 1, (cls, counts)
+              assert max(counts) == 3, (cls, counts)
+              hong_overload += overload_days
+          assert hong_overload == 2
 
           # 3) 体育实际课位不变；只允许二1周五“正式显示体育”换位。
           def pe_key(r):
