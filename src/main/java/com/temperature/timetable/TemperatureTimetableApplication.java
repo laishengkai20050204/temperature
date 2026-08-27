@@ -98,13 +98,43 @@ public final class TemperatureTimetableApplication {
                     && a.getTimeslot().getPeriod() == 6) {
                 violations.add("Grade 2 late class: " + label(a) + " " + slot(a));
             }
-            if (a.getTimeslot().getPeriod() == 1 && isSecondarySubject(a.getSubject())) {
-                violations.add("Secondary period 1: " + label(a) + " " + slot(a));
+            if (a.getTimeslot().getPeriod() <= 2 && isSecondarySubject(a.getSubject())) {
+                violations.add("Secondary period 1-2: " + label(a) + " " + slot(a));
+            }
+            if (isDisplayOnlyCombinedPe(a) && !isExpectedCombinedPeDisplaySlot(a)) {
+                violations.add("Grade 2 combined PE display slot mismatch: " + label(a) + " " + slot(a));
             }
             for (TeacherUnavailable unavailable : timetable.getTeacherUnavailableList()) {
                 if (a.getTeacher().equals(unavailable.teacher())
                         && a.getTimeslot().equals(unavailable.timeslot())) {
                     violations.add("Teacher unavailable: " + label(a) + " " + slot(a));
+                }
+            }
+        }
+
+        List<String> teacherOrderDays = lessons.stream()
+                .filter(l -> l.getTimeslot() != null && !isDisplayOnlyCombinedPe(l))
+                .map(l -> l.getTeacher() + "|" + l.getTimeslot().getDayOfWeek())
+                .distinct()
+                .toList();
+        for (String key : teacherOrderDays) {
+            String[] parts = key.split("\\|", -1);
+            String teacher = parts[0];
+            DayOfWeek day = DayOfWeek.valueOf(parts[1]);
+            List<Lesson> dayLessons = lessons.stream()
+                    .filter(l -> l.getTimeslot() != null
+                            && !isDisplayOnlyCombinedPe(l)
+                            && l.getTeacher().equals(teacher)
+                            && l.getTimeslot().getDayOfWeek() == day)
+                    .toList();
+            for (Lesson secondary : dayLessons) {
+                if (!isSecondarySubject(secondary.getSubject())) continue;
+                for (Lesson main : dayLessons) {
+                    if (isSecondaryBeforeMain(secondary, main)) {
+                        violations.add("Teacher secondary before main: " + teacher + " " + day
+                                + " -> " + label(secondary) + " " + slot(secondary)
+                                + " before " + label(main) + " " + slot(main));
+                    }
                 }
             }
         }
@@ -173,11 +203,18 @@ public final class TemperatureTimetableApplication {
     private static boolean isDisplayOnlyCombinedPe(Lesson lesson) {
         if (!lesson.getTeacher().equals("柯冬梅") || !lesson.getStudentGroup().equals("二1")
                 || !lesson.getSubject().contains("体育")) return false;
+        String original = lesson.getOriginalTimeslotId();
+        return "MON-2".equals(original) || "WED-4".equals(original) || "FRI-3".equals(original);
+    }
+
+    private static boolean isExpectedCombinedPeDisplaySlot(Lesson lesson) {
+        String original = lesson.getOriginalTimeslotId();
         DayOfWeek day = lesson.getTimeslot().getDayOfWeek();
         int period = lesson.getTimeslot().getPeriod();
-        return (day == DayOfWeek.MONDAY && period == 2)
-                || (day == DayOfWeek.WEDNESDAY && period == 4)
-                || (day == DayOfWeek.FRIDAY && period == 3);
+        if ("MON-2".equals(original)) return day == DayOfWeek.MONDAY && period == 3;
+        if ("WED-4".equals(original)) return day == DayOfWeek.WEDNESDAY && period == 5;
+        if ("FRI-3".equals(original)) return day == DayOfWeek.FRIDAY && period == 3;
+        return false;
     }
 
     private static boolean isAllowedCombinedPe(Lesson a, Lesson b) {
