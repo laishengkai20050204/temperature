@@ -197,6 +197,7 @@ public final class TemperatureTimetableApplication {
 
     private static boolean isSecondaryBeforeMain(Lesson secondary, Lesson main) {
         return isSecondarySubject(secondary.getSubject())
+                && !secondary.getSubject().contains("体育")
                 && isMainSubject(main.getSubject())
                 && secondary.getTimeslot().getPeriod() < main.getTimeslot().getPeriod();
     }
