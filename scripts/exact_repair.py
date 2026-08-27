@@ -100,11 +100,29 @@ def solve(rows, output_path, time_limit):
     model = cp_model.CpModel()
 
     x = {}
+    slot_num = {}
+    slot_index = {s: k for k, s in enumerate(slots)}
     for r in rows:
         i = r["_idx"]
         for s in slots:
             x[i, s] = model.NewBoolVar(f"x_{i}_{s[0]}_{s[1]}")
         model.Add(sum(x[i, s] for s in slots) == 1)
+        slot_num[i] = model.NewIntVar(0, len(slots) - 1, f"slot_num_{i}")
+        model.Add(slot_num[i] == sum(slot_index[s] * x[i, s] for s in slots))
+
+        # 从当前批准课表附近开始搜索，优先找到最小改动可行解。
+        orig = slot_key(r["day"], r["period"])
+        for s in slots:
+            model.AddHint(x[i, s], 1 if s == orig else 0)
+
+    # 同班、同科、同教师的重复课互相等价；固定其时段顺序，减少对称搜索。
+    symmetry_groups = defaultdict(list)
+    for r in rows:
+        symmetry_groups[(r["class"], r["subject"], r["teacher"])].append(r)
+    for same_rows in symmetry_groups.values():
+        same_rows = sorted(same_rows, key=lambda r: r["_idx"])
+        for a, b in zip(same_rows, same_rows[1:]):
+            model.Add(slot_num[a["_idx"]] < slot_num[b["_idx"]])
 
     # 体育实际时段全部锁定。唯一允许变化的是二1周五“正式显示位”，
     # 因用户明确要求正式课表中二1、三1不要排在同一节。
