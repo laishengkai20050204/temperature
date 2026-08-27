@@ -19,8 +19,10 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                 studentGroupConflict(factory),
                 teacherUnavailable(factory),
                 gradeTwoNoLateClass(factory),
-                secondarySubjectNotFirstPeriod(factory),
+                secondarySubjectNotFirstTwoPeriods(factory),
                 secondarySubjectAfterMainSubjects(factory),
+                secondarySubjectAfterTeacherMainSubjects(factory),
+                gradeTwoCombinedPeDisplayAtActualSlot(factory),
                 teacherNoThreeConsecutive(factory),
                 minimizeChanges(factory),
                 teacherConsecutiveLoad(factory),
@@ -67,12 +69,12 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                 .asConstraint("Grade 2 no period 6 Tue-Fri");
     }
 
-    Constraint secondarySubjectNotFirstPeriod(ConstraintFactory factory) {
+    Constraint secondarySubjectNotFirstTwoPeriods(ConstraintFactory factory) {
         return factory.forEach(Lesson.class)
-                .filter(lesson -> lesson.getTimeslot().getPeriod() == 1
+                .filter(lesson -> lesson.getTimeslot().getPeriod() <= 2
                         && isSecondarySubject(lesson.getSubject()))
                 .penalize(HardSoftScore.ONE_HARD)
-                .asConstraint("Secondary subjects cannot be period 1");
+                .asConstraint("Secondary subjects cannot be periods 1-2");
     }
 
     Constraint secondarySubjectAfterMainSubjects(ConstraintFactory factory) {
@@ -82,6 +84,25 @@ public class TimetableConstraintProvider implements ConstraintProvider {
                 .filter((a, b) -> isSecondaryBeforeMain(a, b) || isSecondaryBeforeMain(b, a))
                 .penalize(HardSoftScore.ONE_HARD)
                 .asConstraint("Main subjects before secondary subjects");
+    }
+
+    Constraint secondarySubjectAfterTeacherMainSubjects(ConstraintFactory factory) {
+        return factory.forEachUniquePair(Lesson.class,
+                        Joiners.equal(Lesson::getTeacher),
+                        Joiners.equal(lesson -> lesson.getTimeslot().getDayOfWeek()))
+                .filter((a, b) -> !isDisplayOnlyCombinedPe(a)
+                        && !isDisplayOnlyCombinedPe(b)
+                        && (isSecondaryBeforeMain(a, b) || isSecondaryBeforeMain(b, a)))
+                .penalize(HardSoftScore.ONE_HARD)
+                .asConstraint("Teacher main subjects before secondary subjects");
+    }
+
+    Constraint gradeTwoCombinedPeDisplayAtActualSlot(ConstraintFactory factory) {
+        return factory.forEach(Lesson.class)
+                .filter(lesson -> isDisplayOnlyCombinedPe(lesson)
+                        && !isExpectedCombinedPeDisplaySlot(lesson))
+                .penalize(HardSoftScore.ONE_HARD)
+                .asConstraint("Grade 2 combined PE display follows actual merged slot");
     }
 
     Constraint teacherNoThreeConsecutive(ConstraintFactory factory) {
@@ -186,6 +207,16 @@ public class TimetableConstraintProvider implements ConstraintProvider {
         return original != null && (original.equals("MON-2")
                 || original.equals("WED-4")
                 || original.equals("FRI-3"));
+    }
+
+    private static boolean isExpectedCombinedPeDisplaySlot(Lesson lesson) {
+        String original = lesson.getOriginalTimeslotId();
+        DayOfWeek day = lesson.getTimeslot().getDayOfWeek();
+        int period = lesson.getTimeslot().getPeriod();
+        if ("MON-2".equals(original)) return day == DayOfWeek.MONDAY && period == 3;
+        if ("WED-4".equals(original)) return day == DayOfWeek.WEDNESDAY && period == 5;
+        if ("FRI-3".equals(original)) return day == DayOfWeek.FRIDAY && period == 3;
+        return false;
     }
 
     private static boolean isAllowedCombinedPe(Lesson a, Lesson b) {
