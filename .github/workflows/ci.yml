@@ -75,6 +75,90 @@ jobs:
             target/exact-baseline.tsv \
             --time-limit 120 | tee target/exact.log
 
+      - name: Validate requested balancing rules
+        shell: bash
+        run: |
+          python - <<'PY'
+          import csv
+          import math
+          from collections import Counter, defaultdict
+
+          DAYS = ["MON", "TUE", "WED", "THU", "FRI"]
+          MAIN = {"语文", "数学"}
+
+          def read(path):
+              out = []
+              with open(path, encoding="utf-8", newline="") as f:
+                  for r in csv.DictReader(f, delimiter="\t"):
+                      r["period"] = int(r["period"])
+                      out.append(r)
+              return out
+
+          before = read("data/school-baseline.tsv")
+          after = read("target/exact-baseline.tsv")
+
+          # 1) 吴淑治：周二书法移到周三；周三语文第1节。
+          calligraphy = [r for r in after if r["class"]=="五1" and r["subject"]=="书法" and r["teacher"]=="吴淑治"]
+          assert len(calligraphy)==1 and calligraphy[0]["day"]=="WED", calligraphy
+          assert any(r["class"]=="五1" and r["subject"]=="语文" and r["teacher"]=="吴淑治"
+                     and r["day"]=="WED" and r["period"]==1 for r in after)
+
+          # 2) 每班每天语文+数学均衡。
+          weekly = Counter(r["class"] for r in after if r["subject"] in MAIN)
+          daily = Counter((r["class"], r["day"]) for r in after if r["subject"] in MAIN)
+          for cls, total in sorted(weekly.items()):
+              cap = math.ceil(total / 5)
+              counts = [daily[(cls,d)] for d in DAYS]
+              print("core-balance", cls, counts, "cap", cap)
+              assert max(counts) <= cap, (cls, counts, cap)
+              if total == 10:
+                  assert counts == [2,2,2,2,2], (cls, counts)
+
+          # 特别复核洪雪颖任教的二1、四1：每天语数不超过2节。
+          for cls in ("二1", "四1"):
+              counts = [daily[(cls,d)] for d in DAYS]
+              assert max(counts) <= 2, (cls, counts)
+
+          # 3) 体育实际课位不变；只允许二1周五“正式显示体育”换位。
+          def pe_key(r):
+              return (r["class"], r["subject"], r["teacher"])
+
+          before_pe = {pe_key(r): (r["day"],r["period"]) for r in before if "体育" in r["subject"]}
+          after_pe = {pe_key(r): (r["day"],r["period"]) for r in after if "体育" in r["subject"]}
+
+          for k, slot in before_pe.items():
+              if k == ("二1","体育","柯冬梅"):
+                  continue
+              assert after_pe[k] == slot, (k, slot, after_pe[k])
+
+          g2 = [r for r in after if r["class"]=="二1" and r["teacher"]=="柯冬梅"
+                and "体育" in r["subject"] and r["day"]=="FRI"]
+          g3 = [r for r in after if r["class"]=="三1" and r["teacher"]=="柯冬梅"
+                and "体育" in r["subject"] and r["day"]=="FRI"]
+          assert len(g2)==1 and len(g3)==1
+          assert g2[0]["period"] != g3[0]["period"], (g2,g3)
+          print("Friday formal PE:", "二1", g2[0]["period"], "三1", g3[0]["period"])
+
+          # 4) 连堂软指标：统计同班同科同日重复是否落在2-3。
+          grouped = defaultdict(list)
+          for r in after:
+              grouped[(r["class"],r["subject"],r["day"])].append(r["period"])
+          bad = []
+          good = []
+          for key, ps in grouped.items():
+              if len(ps) >= 2:
+                  ps = sorted(ps)
+                  if 2 in ps and 3 in ps:
+                      good.append((key,ps))
+                  else:
+                      bad.append((key,ps))
+          print("double-period 2-3 good:", len(good), "other same-day duplicates:", len(bad))
+          for item in bad:
+              print("double-period-not-2-3:", item)
+
+          print("requested balancing rules: OK")
+          PY
+
       - name: Verify exact candidate with Timefold
         shell: bash
         run: |
