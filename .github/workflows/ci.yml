@@ -47,7 +47,7 @@ jobs:
               bad = []
               for (name, day), items in grouped.items():
                   mains = [r for r in items if r["subject"] in main]
-                  secondary = [r for r in items if r["subject"] not in main and r["subject"] != "英语"]
+                  secondary = [r for r in items if r["subject"] not in main and r["subject"] != "英语" and "体育" not in r["subject"]]
                   for s in secondary:
                       later = [m for m in mains if m["period"] > s["period"]]
                       if later:
