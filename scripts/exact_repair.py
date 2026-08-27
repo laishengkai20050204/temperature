@@ -145,8 +145,15 @@ def solve(rows, output_path, time_limit):
     ]
     if len(grade3_friday_pe) != 1:
         raise SystemExit(f"Expected exactly one grade-3 Friday PE row, got {len(grade3_friday_pe)}")
-    p3_fixed = grade3_friday_pe[0]["period"]
-    model.Add(x[grade2_friday_pe["_idx"], ("FRI", p3_fixed)] == 0)
+    other_friday_pe_periods = {
+        r["period"] for r in rows
+        if r["teacher"] == "柯冬梅"
+        and is_pe(r["subject"])
+        and r["day"] == "FRI"
+        and r["_idx"] != grade2_friday_pe["_idx"]
+    }
+    for p in other_friday_pe_periods:
+        model.Add(x[grade2_friday_pe["_idx"], ("FRI", p)] == 0)
 
     # 每个班同一时段最多一节。
     by_class = defaultdict(list)
