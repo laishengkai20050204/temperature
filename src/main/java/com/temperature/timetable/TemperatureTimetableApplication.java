@@ -219,10 +219,9 @@ public final class TemperatureTimetableApplication {
     }
 
     private static boolean isDisplayOnlyCombinedPe(Lesson lesson) {
-        if (!lesson.getTeacher().equals("柯冬梅") || !lesson.getStudentGroup().equals("二1")
-                || !lesson.getSubject().contains("体育")) return false;
-        String original = lesson.getOriginalTimeslotId();
-        return "MON-2".equals(original) || "WED-4".equals(original) || "FRI-3".equals(original);
+        return lesson.getTeacher().equals("柯冬梅")
+                && lesson.getStudentGroup().equals("二1")
+                && lesson.getSubject().contains("体育");
     }
 
     private static boolean isExpectedCombinedPeDisplaySlot(Lesson lesson) {
