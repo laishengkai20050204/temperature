@@ -74,6 +74,7 @@ jobs:
         run: |
           grep -q "Solved score: 0hard/" target/solve.log
           grep -q "Moved PE lessons: 0" target/solve.log
+          grep -q "Main-teacher secondary period-2 count: 0" target/solve.log
           before=$(awk -F'\t' 'NR>1 && $5==2 && $2!="语文" && $2!="数学" && $2!="体育" {n++} END {print n+0}' data/school-baseline.tsv)
           after=$(grep "Secondary period-2 preference count:" target/solve.log | awk '{print $5}')
           echo "secondary period-2 before=$before after=$after"
