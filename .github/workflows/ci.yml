@@ -63,16 +63,27 @@ jobs:
           verify_order("teacher", "Teacher")
           PY
 
-      - name: Solve latest school timetable
+      - name: Install exact repair solver
+        run: python -m pip install --disable-pip-version-check ortools
+
+      - name: Exact repair constrained timetable
+        run: |
+          python scripts/exact_repair.py \
+            data/school-baseline.tsv \
+            target/exact-baseline.tsv \
+            --time-limit 120 | tee target/exact.log
+
+      - name: Verify exact candidate with Timefold
         run: |
           java -jar target/temperature-timetable-0.1.0-SNAPSHOT.jar \
-            data/school-baseline.tsv \
+            target/exact-baseline.tsv \
             target/school-timetable-solved.xlsx | tee target/solve.log
 
       - name: Verify hard constraints, PE lock, and period-2 improvement
         shell: bash
         run: |
           grep -q "Solved score: 0hard/" target/solve.log
+          grep -q "Changed lessons: 0" target/solve.log
           grep -q "Moved PE lessons: 0" target/solve.log
           grep -q "Main-teacher secondary period-2 count: 0" target/solve.log
           before=$(awk -F'\t' 'NR>1 && $5==2 && $2!="语文" && $2!="数学" && $2!="体育" {n++} END {print n+0}' data/school-baseline.tsv)
@@ -86,6 +97,8 @@ jobs:
         with:
           name: school-timetable-solved
           path: |
+            target/exact-baseline.tsv
+            target/exact.log
             target/school-timetable-solved.xlsx
             target/solve.log
           if-no-files-found: error
