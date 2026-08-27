@@ -50,7 +50,7 @@ public final class TemperatureTimetableApplication {
         long secondaryPeriod2 = solution.getLessons().stream()
                 .filter(lesson -> lesson.getTimeslot() != null
                         && lesson.getTimeslot().getPeriod() == 2
-                        && isSecondarySubject(lesson.getSubject())
+                        && isSecondPeriodAvoidSubject(lesson.getSubject())
                         && !lesson.getSubject().contains("体育"))
                 .count();
         long laiMingyaSecondaryPeriod2 = solution.getLessons().stream()
@@ -199,7 +199,7 @@ public final class TemperatureTimetableApplication {
     }
 
     private static boolean isSecondaryBeforeMain(Lesson secondary, Lesson main) {
-        return isSecondarySubject(secondary.getSubject())
+        return isOrderingSecondarySubject(secondary.getSubject())
                 && !secondary.getSubject().contains("体育")
                 && isMainSubject(main.getSubject())
                 && secondary.getTimeslot().getPeriod() < main.getTimeslot().getPeriod();
@@ -211,6 +211,14 @@ public final class TemperatureTimetableApplication {
 
     private static boolean isSecondarySubject(String subject) {
         return !isMainSubject(subject);
+    }
+
+    private static boolean isOrderingSecondarySubject(String subject) {
+        return isSecondarySubject(subject) && !subject.equals("英语");
+    }
+
+    private static boolean isSecondPeriodAvoidSubject(String subject) {
+        return isSecondarySubject(subject) && !subject.equals("英语");
     }
 
     private static boolean isAllowedThreeConsecutiveException(Lesson a, Lesson b, Lesson c) {
