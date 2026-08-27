@@ -43,9 +43,8 @@ public final class SchoolBaselineTsvIO {
             int period = Integer.parseInt(parts[4]);
             String slotId = slotId(day, period);
             Timeslot slot = byId.get(slotId);
-            boolean locked = isDisplayOnlyCombinedPe(group, subject, teacher, slotId);
             lessons.add(new Lesson(group + "-" + day.getValue() + "-" + period,
-                    subject, teacher, group, slotId, locked, slot));
+                    subject, teacher, group, slotId, false, slot));
         }
 
         return new Timetable(timeslots, buildTeacherUnavailable(lessons, byId), lessons);
