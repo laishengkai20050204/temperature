@@ -215,15 +215,9 @@ public class TimetableConstraintProvider implements ConstraintProvider {
     }
 
     private static boolean isDisplayOnlyCombinedPe(Lesson lesson) {
-        if (!lesson.getTeacher().equals("柯冬梅")
-                || !lesson.getStudentGroup().equals("二1")
-                || !lesson.getSubject().contains("体育")) {
-            return false;
-        }
-        String original = lesson.getOriginalTimeslotId();
-        return original != null && (original.equals("MON-2")
-                || original.equals("WED-4")
-                || original.equals("FRI-3"));
+        return lesson.getTeacher().equals("柯冬梅")
+                && lesson.getStudentGroup().equals("二1")
+                && lesson.getSubject().contains("体育");
     }
 
     private static boolean isExpectedCombinedPeDisplaySlot(Lesson lesson) {
