@@ -222,23 +222,21 @@ def solve(rows, output_path, time_limit):
                                     x[sec["_idx"], (d, ps)] + x[main["_idx"], (d, pm)] <= 1
                                 )
 
-    # 每班每天语文+数学均衡：
-    # 10节主科的班级每天最多2节，因此会自然变成2+2+2+2+2；
-    # 11节主科的班级每天最多3节，再用软目标逼近2+2+2+2+3。
-    balance_terms = []
+    # 每班每天语文+数学最多3节。
+    # 第一优化目标是把“超过2节”的总量压到理论最低：
+    # 每周10节 -> 2+2+2+2+2；每周11节 -> 3+2+2+2+2。
+    overload_terms = []
     core_count_vars = {}
     for cls, group_rows in by_class.items():
         main_rows = [r for r in group_rows if is_main(r["subject"])]
-        weekly_main = len(main_rows)
-        daily_cap = math.ceil(weekly_main / len(DAYS))
         for d in DAYS:
-            count = model.NewIntVar(0, daily_cap, f"core_{cls}_{d}")
+            count = model.NewIntVar(0, 3, f"core_{cls}_{d}")
             model.Add(count == sum(x[r["_idx"], (d, p)] for r in main_rows for p in PERIODS))
-            model.Add(count <= daily_cap)
+            model.Add(count <= 3)
             core_count_vars[(cls, d)] = count
-            dev = model.NewIntVar(0, 6, f"core_dev_{cls}_{d}")
-            model.AddAbsEquality(dev, count - 2)
-            balance_terms.append(dev)
+            overload = model.NewIntVar(0, 1, f"core_overload_{cls}_{d}")
+            model.AddMaxEquality(overload, [count - 2, 0])
+            overload_terms.append(overload)
 
     # 普通教师上午1-3、下午4-6均不能连续上满三节。
     for teacher, teacher_rows in by_teacher.items():
@@ -290,15 +288,15 @@ def solve(rows, output_path, time_limit):
             for d in DAYS:
                 second_secondary_terms.append(x[r["_idx"], (d, 2)])
 
-    # 尽量少改：权重最高；在同等改动数下，再优化主科均衡、连堂2-3、次科第2节。
+    # 先把语数日负荷压到理论最优，再尽量少改；之后优化连堂2-3和次科第2节。
     moved_terms = []
     for r in rows:
         orig = slot_key(r["day"], r["period"])
         moved_terms.append(1 - x[r["_idx"], orig])
 
     model.Minimize(
-        100000 * sum(moved_terms)
-        + 1000 * sum(balance_terms)
+        1000000 * sum(overload_terms)
+        + 10000 * sum(moved_terms)
         + 100 * sum(duplicate_bad_terms)
         + 10 * sum(second_secondary_terms)
     )
