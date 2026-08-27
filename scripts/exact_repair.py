@@ -223,6 +223,16 @@ def solve(rows, output_path, time_limit):
         raise SystemExit("No 五1语文(吴淑治) found")
     model.Add(sum(x[r["_idx"], ("WED", 1)] for r in wu_wed_chinese) == 1)
 
+    # 用户最新指定：吴淑治周三的书法或少先队课移动一节到周五下午。
+    # 书法仍保留此前“周三”要求，因此本轮固定将五1少先队课移到周五下午（第4-6节）。
+    wu_pioneers = [
+        r for r in rows
+        if r["class"] == "五1" and r["subject"] == "少先队课" and r["teacher"] == "吴淑治"
+    ]
+    if len(wu_pioneers) != 1:
+        raise SystemExit(f"Expected one 五1少先队课(吴淑治), got {len(wu_pioneers)}")
+    model.Add(sum(x[wu_pioneers[0]["_idx"], ("FRI", p)] for p in (4, 5, 6)) == 1)
+
     # 洪丽君：周二两节英语从下午移到上午第2、3节；周四两节保持原正式时段。
     hong_tue_english = [
         r for r in rows
