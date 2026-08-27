@@ -35,7 +35,7 @@ public final class TemperatureTimetableApplication {
         boolean schoolWorkbook = !tsvInput && TimetableExcelIO.isSchoolWorkbook(input);
 
         Timetable problem = tsvInput ? SchoolBaselineTsvIO.read(input) : TimetableExcelIO.read(input);
-        Timetable solution = solve(problem, Duration.ofSeconds(300));
+        Timetable solution = solve(problem, Duration.ofSeconds(90));
 
         if (schoolWorkbook) {
             TimetableExcelIO.writeSchoolWorkbook(input, solution, output);
