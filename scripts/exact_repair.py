@@ -238,16 +238,19 @@ def solve(rows, output_path, time_limit):
             model.AddMaxEquality(overload, [count - 2, 0])
             overload_terms.append(overload)
 
-    # 洪雪颖任教的二1、四1作为重点：
-    # 先检验两班合计是否能做到“最多只有1个超出2节的日负荷”。
+    # 已由两轮精确可行性检查证明：二1+四1的3节语数日不可能降到0或1天。
+    # 因此固定在可行下限2天，并要求每班最多1天出现3节，避免集中到单一班级。
     hong_overload_terms = []
+    hong_overload_by_class = defaultdict(list)
     for cls in ("二1", "四1"):
         for d in DAYS:
             count = core_count_vars[(cls, d)]
             overload = model.NewIntVar(0, 1, f"hong_overload_{cls}_{d}")
             model.AddMaxEquality(overload, [count - 2, 0])
             hong_overload_terms.append(overload)
-    model.Add(sum(hong_overload_terms) <= 1)
+            hong_overload_by_class[cls].append(overload)
+        model.Add(sum(hong_overload_by_class[cls]) <= 1)
+    model.Add(sum(hong_overload_terms) == 2)
 
     # 普通教师上午1-3、下午4-6均不能连续上满三节。
     for teacher, teacher_rows in by_teacher.items():
