@@ -174,6 +174,7 @@ public class TimetableConstraintProvider implements ConstraintProvider {
 
     private static boolean isSecondaryBeforeMain(Lesson maybeSecondary, Lesson maybeMain) {
         return isSecondarySubject(maybeSecondary.getSubject())
+                && !isPhysicalEducation(maybeSecondary.getSubject())
                 && isMainSubject(maybeMain.getSubject())
                 && maybeSecondary.getTimeslot().getPeriod() < maybeMain.getTimeslot().getPeriod();
     }
