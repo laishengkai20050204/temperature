@@ -219,6 +219,19 @@ def solve(rows, output_path, time_limit):
         raise SystemExit("No 五1语文(吴淑治) found")
     model.Add(sum(x[r["_idx"], ("WED", 1)] for r in wu_wed_chinese) == 1)
 
+    # 同一班同一门非体育次科不能在同一天出现两节。
+    same_secondary_groups = defaultdict(list)
+    for r in rows:
+        if is_secondary(r["subject"]) and not is_pe(r["subject"]):
+            same_secondary_groups[(r["class"], r["subject"])].append(r)
+    for same_rows in same_secondary_groups.values():
+        if len(same_rows) < 2:
+            continue
+        for d in DAYS:
+            model.Add(
+                sum(x[r["_idx"], (d, p)] for r in same_rows for p in PERIODS) <= 1
+            )
+
     # 班级层面：同一天语文/数学必须在次科之前。
     for group_rows in by_class.values():
         mains = [r for r in group_rows if is_main(r["subject"])]
