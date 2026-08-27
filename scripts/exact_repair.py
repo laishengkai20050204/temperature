@@ -238,11 +238,16 @@ def solve(rows, output_path, time_limit):
             model.AddMaxEquality(overload, [count - 2, 0])
             overload_terms.append(overload)
 
-    # 洪雪颖任教的二1、四1作为重点：每天严格最多2节语文+数学。
-    # 两班每周恰好10节，因此这会强制形成2+2+2+2+2。
+    # 洪雪颖任教的二1、四1作为重点：
+    # 先检验两班合计是否能做到“最多只有1个超出2节的日负荷”。
+    hong_overload_terms = []
     for cls in ("二1", "四1"):
         for d in DAYS:
-            model.Add(core_count_vars[(cls, d)] <= 2)
+            count = core_count_vars[(cls, d)]
+            overload = model.NewIntVar(0, 1, f"hong_overload_{cls}_{d}")
+            model.AddMaxEquality(overload, [count - 2, 0])
+            hong_overload_terms.append(overload)
+    model.Add(sum(hong_overload_terms) <= 1)
 
     # 普通教师上午1-3、下午4-6均不能连续上满三节。
     for teacher, teacher_rows in by_teacher.items():
