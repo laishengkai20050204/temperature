@@ -53,22 +53,18 @@ public final class TemperatureTimetableApplication {
                         && isSecondarySubject(lesson.getSubject())
                         && !lesson.getSubject().contains("体育"))
                 .count();
-        java.util.Set<String> mainSubjectTeachers = solution.getLessons().stream()
-                .filter(lesson -> isMainSubject(lesson.getSubject()))
-                .map(Lesson::getTeacher)
-                .collect(java.util.stream.Collectors.toSet());
-        long mainTeacherSecondaryPeriod2 = solution.getLessons().stream()
+        long laiMingyaSecondaryPeriod2 = solution.getLessons().stream()
                 .filter(lesson -> lesson.getTimeslot() != null
+                        && lesson.getTeacher().equals("赖明雅")
                         && lesson.getTimeslot().getPeriod() == 2
                         && isSecondarySubject(lesson.getSubject())
-                        && !lesson.getSubject().contains("体育")
-                        && mainSubjectTeachers.contains(lesson.getTeacher()))
+                        && !lesson.getSubject().contains("体育"))
                 .count();
         System.out.println("Solved score: " + solution.getScore());
         System.out.println("Changed lessons: " + changed);
         System.out.println("Moved PE lessons: " + movedPe);
         System.out.println("Secondary period-2 preference count: " + secondaryPeriod2);
-        System.out.println("Main-teacher secondary period-2 count: " + mainTeacherSecondaryPeriod2);
+        System.out.println("Lai Mingya secondary period-2 count: " + laiMingyaSecondaryPeriod2);
         printHardViolationDiagnostics(solution);
         System.out.println("Output: " + output.toAbsolutePath());
     }
