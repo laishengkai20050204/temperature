@@ -103,6 +103,15 @@ jobs:
           assert any(r["class"]=="五1" and r["subject"]=="语文" and r["teacher"]=="吴淑治"
                      and r["day"]=="WED" and r["period"]==1 for r in after)
 
+          # 最新要求：吴淑治周三的书法/少先队课至少移一节到周五下午；
+          # 本轮保留书法周三，因此五1少先队课固定到周五第4-6节。
+          wu_pioneers = [
+              r for r in after
+              if r["class"]=="五1" and r["subject"]=="少先队课" and r["teacher"]=="吴淑治"
+          ]
+          assert len(wu_pioneers)==1 and wu_pioneers[0]["day"]=="FRI" and wu_pioneers[0]["period"] in {4,5,6}, wu_pioneers
+          print("Wu Shuzhi Friday-afternoon lesson:", wu_pioneers[0]["subject"], wu_pioneers[0]["period"])
+
           # 2) 每班每天语文+数学均衡：每天最多3节，
           # 并要求“超过2节”的总量达到理论最低。
           weekly = Counter(r["class"] for r in after if r["subject"] in MAIN)
