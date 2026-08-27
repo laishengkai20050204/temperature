@@ -131,11 +131,10 @@ def solve(rows, output_path, time_limit):
             for d in DAYS:
                 model.Add(x[r["_idx"], (d, 1)] == 0)
 
-    # 承担语文/数学主科的教师，其次科不排第2节。
-    main_teachers = {r["teacher"] for r in rows if is_main(r["subject"])}
+    # 赖明雅的次科不排第2节；其它教师第2节次科仍按软优化处理。
     for r in rows:
         if (
-            r["teacher"] in main_teachers
+            r["teacher"] == "赖明雅"
             and is_secondary(r["subject"])
             and not is_pe(r["subject"])
         ):
