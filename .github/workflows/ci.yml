@@ -156,22 +156,31 @@ jobs:
           assert all(g2[0]["period"] != r["period"] for r in other_kd_friday), (g2, other_kd_friday)
           print("Friday formal PE:", "二1", g2[0]["period"], "三1", g3[0]["period"])
 
-          # 4) 连堂软指标：统计同班同科同日重复是否落在2-3。
+          # 4) 同班同一门非体育次科不得同一天重复。
           grouped = defaultdict(list)
           for r in after:
               grouped[(r["class"],r["subject"],r["day"])].append(r["period"])
+
+          secondary_duplicates = []
+          for (cls, subject, day), ps in grouped.items():
+              if subject not in MAIN and "体育" not in subject and len(ps) >= 2:
+                  secondary_duplicates.append(((cls,subject,day), sorted(ps)))
+          assert not secondary_duplicates, secondary_duplicates
+          print("same-day secondary duplicates: 0")
+
+          # 连堂软指标只统计允许同日重复的主科；尽量放2-3节。
           bad = []
           good = []
-          for key, ps in grouped.items():
-              if len(ps) >= 2:
+          for (cls, subject, day), ps in grouped.items():
+              if subject in MAIN and len(ps) >= 2:
                   ps = sorted(ps)
                   if 2 in ps and 3 in ps:
-                      good.append((key,ps))
+                      good.append(((cls,subject,day),ps))
                   else:
-                      bad.append((key,ps))
-          print("double-period 2-3 good:", len(good), "other same-day duplicates:", len(bad))
+                      bad.append(((cls,subject,day),ps))
+          print("main double-period 2-3 good:", len(good), "other main duplicates:", len(bad))
           for item in bad:
-              print("double-period-not-2-3:", item)
+              print("main-double-period-not-2-3:", item)
 
           print("requested balancing rules: OK")
           PY
