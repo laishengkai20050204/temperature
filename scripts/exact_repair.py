@@ -238,13 +238,11 @@ def solve(rows, output_path, time_limit):
             model.AddMaxEquality(overload, [count - 2, 0])
             overload_terms.append(overload)
 
-    # 理论最均衡主科负荷作为硬目标：
-    # 每周10节语数的班级总超载应为0；每周11节的班级总超载应为1。
-    theoretical_overload = 0
-    for cls, group_rows in by_class.items():
-        weekly_main = sum(1 for r in group_rows if is_main(r["subject"]))
-        theoretical_overload += max(0, weekly_main - 10)
-    model.Add(sum(overload_terms) == theoretical_overload)
+    # 洪雪颖任教的二1、四1作为重点：每天严格最多2节语文+数学。
+    # 两班每周恰好10节，因此这会强制形成2+2+2+2+2。
+    for cls in ("二1", "四1"):
+        for d in DAYS:
+            model.Add(core_count_vars[(cls, d)] <= 2)
 
     # 普通教师上午1-3、下午4-6均不能连续上满三节。
     for teacher, teacher_rows in by_teacher.items():
@@ -303,7 +301,8 @@ def solve(rows, output_path, time_limit):
         moved_terms.append(1 - x[r["_idx"], orig])
 
     model.Minimize(
-        10000 * sum(moved_terms)
+        1000000 * sum(overload_terms)
+        + 10000 * sum(moved_terms)
         + 100 * sum(duplicate_bad_terms)
         + 10 * sum(second_secondary_terms)
     )
