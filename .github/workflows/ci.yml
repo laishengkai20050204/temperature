@@ -47,7 +47,7 @@ jobs:
               bad = []
               for (name, day), items in grouped.items():
                   mains = [r for r in items if r["subject"] in main]
-                  secondary = [r for r in items if r["subject"] not in main]
+                  secondary = [r for r in items if r["subject"] not in main and r["subject"] != "英语"]
                   for s in secondary:
                       later = [m for m in mains if m["period"] > s["period"]]
                       if later:
@@ -156,7 +156,22 @@ jobs:
           assert all(g2[0]["period"] != r["period"] for r in other_kd_friday), (g2, other_kd_friday)
           print("Friday formal PE:", "二1", g2[0]["period"], "三1", g3[0]["period"])
 
-          # 4) 同班同一门非体育次科不得同一天重复。
+          # 4) 洪丽君周二两节英语必须移到上午第2、3节；周四英语保持下午。
+          hong_tue = sorted(
+              (r["class"], r["period"])
+              for r in after
+              if r["teacher"]=="洪丽君" and r["subject"]=="英语" and r["day"]=="TUE"
+          )
+          assert len(hong_tue)==2 and sorted(p for _,p in hong_tue)==[2,3], hong_tue
+          hong_thu = sorted(
+              (r["class"], r["period"])
+              for r in after
+              if r["teacher"]=="洪丽君" and r["subject"]=="英语" and r["day"]=="THU"
+          )
+          assert len(hong_thu)==2 and all(p >= 4 for _,p in hong_thu), hong_thu
+          print("Hong Lijun Tuesday English:", hong_tue)
+
+          # 5) 同班同一门非体育次科不得同一天重复。
           grouped = defaultdict(list)
           for r in after:
               grouped[(r["class"],r["subject"],r["day"])].append(r["period"])
@@ -201,7 +216,7 @@ jobs:
           grep -q "Moved PE lessons: 0" target/solve.log
           grep -q "Lai Mingya secondary period-2 count: 0" target/solve.log
           grep -q "Hard violation diagnostics: 0" target/solve.log
-          before=$(awk -F'\t' 'NR>1 && $5==2 && $2!="语文" && $2!="数学" && $2!="体育" {n++} END {print n+0}' data/school-baseline.tsv)
+          before=$(awk -F'\t' 'NR>1 && $5==2 && $2!="语文" && $2!="数学" && $2!="英语" && $2!="体育" {n++} END {print n+0}' data/school-baseline.tsv)
           after=$(grep "Secondary period-2 preference count:" target/solve.log | awk '{print $5}')
           echo "secondary period-2 before=$before after=$after"
           test "$after" -le "$before"
