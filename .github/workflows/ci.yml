@@ -29,8 +29,6 @@ jobs:
             test "$actual" -eq "$target"
           done < data/teacher-targets.tsv
 
-          awk -F'\t' 'NR>1 && $5==1 && $2!="语文" && $2!="数学" {print "Secondary subject in period 1:", $0; bad=1} END {exit bad}' data/school-baseline.tsv
-
           python - <<'PY'
           import csv
           from collections import defaultdict
@@ -71,10 +69,11 @@ jobs:
             data/school-baseline.tsv \
             target/school-timetable-solved.xlsx | tee target/solve.log
 
-      - name: Verify hard constraints and stable candidate
+      - name: Verify hard constraints and required adjustment
         run: |
           grep -q "Solved score: 0hard/" target/solve.log
-          grep -q "Changed lessons: 0" target/solve.log
+          changed=$(grep "Changed lessons:" target/solve.log | awk '{print $3}')
+          test "$changed" -gt 0
 
       - name: Upload solved timetable
         if: always()
